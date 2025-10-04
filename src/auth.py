@@ -1,15 +1,14 @@
 # src/auth.py
 import json
-import hashlib
-import hmac
-import os
+import os, base64
+from cryptography.hazmat.primitives.kdf.scrypt import Scrypt
 
 USERS_FILE = 'data/users.json'
 
 def register_user(username, password):
     """Registra un nuevo usuario guardando el hash de su contraseña con un salt."""
     if not username or not password:
-        print("El nombre de usuario y la contraseña no pueden estar vacíos.")
+        print("Error: El nombre de usuario y la contraseña no pueden estar vacíos.")
         return
     
     with open(USERS_FILE, 'r+') as f:
@@ -27,17 +26,20 @@ def register_user(username, password):
 
         # Crea el hash de la contraseña con el salt
         # Usamos PBKDF2, un estándar para derivar claves de contraseña
-        password_hash = hashlib.pbkdf2_hmac(
-            'sha256',
-            password.encode('utf-8'), # Convertimos la contraseña en una secuencia de bytes
-            salt,
-            100000 # Número de iteraciones
+        kdf = Scrypt(
+            salt=salt,
+            length=32,
+            n=2**14,
+            r=8,
+            p=1
         )
+
+        password_hash = kdf.derive(password.encode('utf-8'))
 
         # Guarda el usuario, el salt (en hexadecimal) y el hash (en hexadecimal)
         users[username] = {
-            'salt': salt.hex(),
-            'password_hash': password_hash.hex()
+            'salt': base64.b64encode(salt).decode('utf-8'),
+            'password_hash': base64.b64encode(password_hash).decode('utf-8')
         }
 
         # Vuelve al inicio del archivo para sobreescribirlo
@@ -60,16 +62,18 @@ def login_user(username, password):
         return
     
     user_data = users[username]
-    salt = bytes.fromhex(user_data['salt'])
-    password_hash_stored = bytes.fromhex(user_data['password_hash'])
+    salt = base64.b64decode(user_data['salt'])
+    password_hash_stored = base64.b64decode(user_data['password_hash'])
 
     # Calcula el hash de la contraseña introducida con el salt guardado
-    password_hash_attempt = hashlib.pbkdf2_hmac(
-        'sha256',
-        password.encode('utf-8'),
-        salt,
-        100000
+    kdf = Scrypt(
+        salt=salt,
+        length=32,
+        n=2**14,
+        r=8,
+        p=1
     )
+    password_hash_attempt = kdf.derive(password.encode('utf-8'))
 
     # Compara los hashes de la contraseña guardada y la introducida
     if password_hash_attempt == password_hash_stored:

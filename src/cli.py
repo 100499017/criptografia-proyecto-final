@@ -1,4 +1,5 @@
 # src/cli.py
+import shutil
 from getpass import getpass
 from src.auth import register_user, login_user
 
@@ -9,6 +10,7 @@ def main_menu():
         print("1. Registrar un nuevo usuario")
         print("2. Iniciar sesión")
         print("3. Salir")
+        print("4. Borrar carpeta /data y salir")
 
         choice = input("Seleccione una opción: ")
 
@@ -24,6 +26,10 @@ def main_menu():
                 # Si el login es exitoso, pasamos al menú del usuario
                 user_menu(user)
         elif choice == '3':
+            print("Saliendo de la aplicación. ¡Hasta luego!")
+            break
+        elif choice == '4':
+            shutil.rmtree('data')
             print("Saliendo de la aplicación. ¡Hasta luego!")
             break
         else:

@@ -1,6 +1,6 @@
 # main.py
 import os
-from src.cli import main_menu
+from src import main_menu
 
 def setup_directories():
     """Crea los directorios necesarios si no existen."""
@@ -13,7 +13,7 @@ def setup_directories():
 
 if __name__ == "__main__":
     print("===========================")
-    print("   Bóveda Digital Segura   ")
+    print("    Bóveda Local Segura    ")
     print("===========================")
 
     # Prepara el entorno
