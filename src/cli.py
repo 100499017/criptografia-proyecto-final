@@ -35,7 +35,7 @@ def main_menu():
                 with open(f'data/public_keys/{username}_public.pem', 'wb') as f:
                     f.write(public_pem)
 
-                print("Usuario registrado con claves RSA.")
+                print("Claves RSA-2048 generadas con éxito.")
 
             else:
                 print("El registro falló. Inténtelo de nuevo.")
@@ -47,13 +47,17 @@ def main_menu():
             if user:
                 # Si el login es exitoso, pasamos al menú del usuario
                 user_menu(user, password)
+
         elif choice == '3':
             print("Saliendo del sistema. ¡Hasta luego!")
             break
+
         elif choice == '4':
             shutil.rmtree('data')
+            shutil.rmtree('downloads')
             print("Todos los datos han sido borrados. ¡Hasta luego!")
             break
+
         else:
             print("Opción no válida. Inténtelo de nuevo.")
 
@@ -78,7 +82,10 @@ def user_menu(username, password):
         if choice == '1':
             file_path = input("Ruta del archivo: ")
             password = getpass("Su contraseña: ")
-            vault.store_file(file_path, password)
+            if os.path.exists(file_path):
+                vault.store_file(file_path, password)
+            else:
+                print("El archivo no existe.")
 
         elif choice == '2':
             files = vault.list_files()
@@ -86,7 +93,7 @@ def user_menu(username, password):
                 filename = input("Nombre del archivo: ")
                 output_path = input("Ruta donde guardar: ")
                 password = getpass("Su contraseña: ")
-                vault.download_file(filename, password, output_path)
+                vault.retrieve_file(filename, password, output_path)
 
         elif choice == '3':
             vault.list_files()
@@ -96,7 +103,10 @@ def user_menu(username, password):
             file_path = input("Ruta del archivo: ")
             message = input("Mensaje (opcional): ")
             password = getpass("Su contraseña: ")
-            messaging.send_file(username, receiver, file_path, password, message)
+            if os.path.exists(file_path):
+                messaging.send_file(username, receiver, file_path, password, message)
+            else:
+                print("El archivo no existe")
 
         elif choice == '5':
             password = getpass("Su contraseña: ")
@@ -107,11 +117,14 @@ def user_menu(username, password):
                 print(f"De: {msg['sender']}")
                 print(f"Archivo: {msg['filename']}")
                 print(f"Mensaje: {msg['message']}")
-                print(f"Firma válida: {'Sí' if msg['signature_valid'] else 'No'}")
+                print(f"HMAC válido: {'Sí' if msg['hmac_valid'] else 'No'}")
 
-                save = input("¿Descargar archivo? (s/n)")
-                if save.lower() == 's':
-                    messaging.save_received_file(msg)
+                if msg['hmac_valid']:
+                    save = input("¿Descargar archivo? (s/n)")
+                    if save.lower() == 's':
+                        messaging.save_received_file(username, msg)
+                else:
+                    print("No se puede descargar - HMAC inválido")
 
         elif choice == '6':
             users = user_manager.list_users()

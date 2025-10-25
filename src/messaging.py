@@ -44,25 +44,29 @@ class MessagingSystem:
             sender_private_key = self._get_private_key(sender, password)
             receiver_public_key = self._get_public_key(receiver)
 
-            # Generar y cifrar clave AES
-            aes_key = self.crypto.generate_key()
+            # Generar claves para este archivo
+            aes_key = self.crypto.generate_symmetric_key()
+            hmac_key = self.crypto.generate_symmetric_key()
+
+            # Cifrar archivo con AES
+            encrypted_file = self.crypto.encrypt_aes(file_data, aes_key)
+
+            # Generar HMAC para autenticación
+            hmac_tag = self.crypto.generate_hmac(file_data, hmac_key)
+
+            # Cifrar claves con clave pública del receptor
             encrypted_aes_key = self.asymmetric_crypto.encrypt_with_public_key(aes_key, receiver_public_key)
-
-            # Cifrar archivo
-            encrypted_file = self.crypto.encrypt_data(file_data, aes_key)
-
-            # Firmar mensaje
-            message_data = f"{message}{os.path.basename(file_path)}".encode()
-            signature = self.asymmetric_crypto.sign_data(message_data, sender_private_key)
+            encrypted_hmac_key = self.asymmetric_crypto.encrypt_with_public_key(hmac_key, receiver_public_key)
 
             # Crear mensaje
             file_message = {
                 'sender': sender,
                 'filename': os.path.basename(file_path),
                 'message': message,
-                'encrypted_key': encrypted_aes_key,
+                'encrypted_aes_key': encrypted_aes_key,
+                'encrypted_hmac_key': encrypted_hmac_key,
                 'encrypted_file': encrypted_file,
-                'signature': signature
+                'hmac': hmac_tag
             }
 
             # Guardar mensaje
@@ -71,13 +75,15 @@ class MessagingSystem:
             os.makedirs(receiver_dir, exist_ok=True)
 
             with open(f'{receiver_dir}/{message_id}.json', 'w') as f:
-                json.dump(file_message, f)
+                json.dump(file_message, f, indent=4)
             
             print(f"Archivo enviado a {receiver}.")
+            print("\tCifrado: AES-256-CBC + RSA-2048")
+            print("\tAutenticación: HMAC-SHA256")
             return True
         
         except Exception as e:
-            print(f"Error: {e}")
+            print(f"Error al enviar archivo: {e}")
             return False
     
     def get_messages(self, username, password):
@@ -94,38 +100,36 @@ class MessagingSystem:
                     with open(f'{user_dir}/{message_file}', 'r') as f:
                         message_data = json.load(f)
                     
-                    # Descifrar archivo
+                    # Descifrar claves
                     private_key = self._get_private_key(username, password)
-                    aes_key = self.asymmetric_crypto.decrypt_with_private_key(message_data['encrypted_key'], private_key)
-                    file_data = self.crypto.decrypt_data(message_data['encrypted_file'], aes_key)
-                    
-                    # Verificar firma
-                    sender_public_key = self._get_public_key(message_data['sender'])
-                    message_to_verify = f"{message_data['message']}{message_data['filename']}".encode()
-                    signature_valid = self.asymmetric_crypto.verify_signature(
-                        message_to_verify, 
-                        message_data['signature'], 
-                        sender_public_key
-                    )
+                    aes_key = self.asymmetric_crypto.decrypt_with_private_key(message_data['encrypted_aes_key'], private_key)
+                    hmac_key = self.asymmetric_crypto.decrypt_with_private_key(message_data['encrypted_hmac_key'], private_key)
+
+                    # Descifrar archivo
+                    file_data = self.crypto.decrypt_aes(message_data['encrypted_file'], aes_key)
+
+                    # Verificar HMAC
+                    hmac_valid = self.crypto.verify_hmac(file_data, hmac_key, message_data['hmac'])
 
                     messages.append({
                         'sender': message_data['sender'],
                         'filename': message_data['filename'],
                         'message': message_data['message'],
                         'file_data': file_data,
-                        'signature_valid': signature_valid
+                        'hmac_valid': hmac_valid
                     })
                 
             return messages
+        
         except Exception as e:
-            print(f"Error: {e}")
+            print(f"Error al obtener mensajes: {e}")
             return []
     
-    def save_received_file(self, message, output_dir="downloads"):
+    def save_received_file(self, username, message, output_dir="downloads"):
         """Guarda archivo recibido"""
         try:
-            os.makedirs(output_dir, exist_ok=True)
-            output_path = f"{output_dir}/{message['filename']}"
+            os.makedirs(f"{output_dir}/{username}", exist_ok=True)
+            output_path = f"{output_dir}/{username}/{message['filename']}"
             
             with open(output_path, 'wb') as f:
                 f.write(message['file_data'])
@@ -134,5 +138,5 @@ class MessagingSystem:
             return True
             
         except Exception as e:
-            print(f"Error: {e}")
+            print(f"Error al guardar archivo: {e}")
             return False

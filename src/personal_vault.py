@@ -27,35 +27,46 @@ class PersonalVault:
             with open(file_path, 'rb') as f:
                 file_data = f.read()
             
-            # Cargar claves
+            # Cargar claves del usuario
             private_key = self._get_private_key(password)
             public_key = private_key.public_key()
 
-            # Generar y cifrar clave AES
-            aes_key = self.crypto.generate_key()
-            encrypted_aes_key = self.asymmetric_crypto.encrypt_with_public_key(aes_key, public_key)
+            # Generar claves para este archivo
+            aes_key = self.crypto.generate_symmetric_key()
+            hmac_key = self.crypto.generate_symmetric_key()
 
-            # Cifrar archivo
-            encrypted_file = self.crypto.encrypt_data(file_data, aes_key)
+            # Cifrar archivo con AES
+            encrypted_file = self.crypto.encrypt_aes(file_data, aes_key)
+
+            # Generar HMAC para autenticación
+            hmac_tag = self.crypto.generate_hmac(file_data, hmac_key)
+
+            # Cifrar claves con RSA
+            encrypted_aes_key = self.asymmetric_crypto.encrypt_with_public_key(aes_key, public_key)
+            encrypted_hmac_key = self.asymmetric_crypto.encrypt_with_public_key(hmac_key, public_key)
 
             # Guardar
             filename = os.path.basename(file_path)
             file_info = {
                 'filename': filename,
-                'encrypted_key': encrypted_aes_key,
-                'encrypted_data': encrypted_file
+                'encrypted_aes_key': encrypted_aes_key,
+                'encrypted_hmac_key': encrypted_hmac_key,
+                'encrypted_data': encrypted_file,
+                'hmac': hmac_tag
             }
 
             with open(f'{self.vault_dir}/{filename}.enc', 'w') as f:
                 json.dump(file_info, f, indent=4)
             
             print(f"Archivo {filename} guardado en la bóveda.")
+            print("\tCifrado: AES-256-CBC")
+            print("\tAutenticación: HMAC-SHA256")
             return True
         except Exception as e:
             print(f"Error: {e}")
             return False
     
-    def download_file(self, filename, password, output_path):
+    def retrieve_file(self, filename, password, output_path):
         """Recupera archivo de bóveda personal"""
         try:
             # Cargar archivo cifrado
@@ -65,20 +76,27 @@ class PersonalVault:
             # Cargar claves
             private_key = self._get_private_key(password)
 
-            # Descifrar clave AES
-            aes_key = self.asymmetric_crypto.decrypt_with_private_key(file_info['encrypted_key'], aes_key)
+            # Descifrar claves AES y HMAC
+            aes_key = self.asymmetric_crypto.decrypt_with_private_key(file_info['encrypted_aes_key'], private_key)
+            hmac_key = self.crypto.decrypt_data(file_info['encrypted_hmac_key'], private_key)
 
             # Descifrar archivo
-            decrypted_data = self.crypto.decrypt_data(file_info['encrypted_data'], aes_key)
+            decrypted_data = self.crypto.decrypt_aes(file_info['encrypted_data'], aes_key)
+
+            # Verificar autenticación con HMAC
+            if not self.crypto.verify_hmac(decrypted_data, hmac_key, file_info['hmac']):
+                print("Error: El archivo ha sido modificado o está corrupto")
+                return False
 
             # Guardar archivo
             with open(output_path, 'wb') as f:
                 f.write(decrypted_data)
             
-            print(f"Archivo '{filename}' descargado.")
+            print(f"Archivo '{filename}' recuperado con éxito.")
             return True
+        
         except Exception as e:
-            print(f"Error: {e}")
+            print(f"Error al recuperar archivo: {e}")
             return False
     
     def list_files(self):
@@ -93,6 +111,6 @@ class PersonalVault:
         else:
             print("Archivos en bóveda:")
             for file in files:
-                print("\t- {file}")
+                print(f"\t- {file}")
         
         return files

@@ -1,8 +1,6 @@
 # src/asymmetric_crypto.py
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import rsa, padding
-from cryptography.hazmat.primitives.kdf.scrypt import Scrypt
-import os
 import base64
 
 class AsymmetricCrypto:
@@ -58,7 +56,7 @@ class AsymmetricCrypto:
         )
         return base64.b64encode(ciphertext).decode()
     
-    def decrypt_with_private_key(self, encrypted_data: str, private_key):
+    def decrypt_with_private_key(self, encrypted_data, private_key):
         """Descifra datos con una clave privada RSA"""
         ciphertext = base64.b64decode(encrypted_data)
         plaintext = private_key.decrypt(
@@ -70,33 +68,3 @@ class AsymmetricCrypto:
             )
         )
         return plaintext
-    
-    def sign_data(self, data: bytes, private_key):
-        """Firma datos con una clave privada RSA"""
-        signature = private_key.sign(
-            data,
-            padding.PSS(
-                mgf=padding.MGF1(hashes.SHA256()),
-                salt_length=padding.PSS.MAX_LENGTH
-            ),
-            hashes.SHA256()
-        )
-        return base64.b64encode(signature).decode()
-    
-    def verify_signature(self, data: bytes, signature: str, public_key) -> bool:
-        """Verifica una firma con una clave pública RSA"""
-        try:
-            signature_bytes = base64.b64decode(signature)
-            public_key.verify(
-                signature_bytes,
-                data,
-                padding.PSS(
-                    mgf=padding.MGF1(hashes.SHA256()),
-                    salt_length=padding.PSS.MAX_LENGTH
-                ),
-                hashes.SHA256()
-            )
-            return True
-        except Exception as e:
-            print(f"Error verificando firma: {e}")
-            return False

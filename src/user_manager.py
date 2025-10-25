@@ -12,7 +12,7 @@ class UserManager:
             with open(self.users_file, 'r') as f:
                 users = json.load(f)
             return username in users
-        except (FileNotFoundError, json.JSONDecodeError):
+        except:
             return False
     
     def list_users(self):
@@ -21,5 +21,5 @@ class UserManager:
             with open(self.users_file, 'r') as f:
                 users = json.load(f)
             return [user for user in users.keys()]
-        except (FileNotFoundError, json.JSONDecodeError):
+        except:
             return []
