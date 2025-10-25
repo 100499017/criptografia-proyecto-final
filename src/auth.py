@@ -77,3 +77,8 @@ def login_user(username: str, password: str) -> str:
     except:
         print("Error: Contraseña incorrecta.")
         return None
+
+def set_users_file_for_testing(new_path):
+    """Función auxiliar para pruebas - cambia la ruta del archivo de usuarios"""
+    global USERS_FILE
+    USERS_FILE = new_path

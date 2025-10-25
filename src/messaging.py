@@ -2,9 +2,9 @@
 import os
 import json
 import uuid
-from src.crypto import CryptoManager
-from src.asymmetric_crypto import AsymmetricCrypto
-from src.user_manager import UserManager
+from crypto import CryptoManager
+from asymmetric_crypto import AsymmetricCrypto
+from user_manager import UserManager
 
 class MessagingSystem:
     def __init__(self):
