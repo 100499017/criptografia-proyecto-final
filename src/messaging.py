@@ -77,10 +77,20 @@ class MessagingSystem:
             with open(f'{receiver_dir}/{message_id}.json', 'w') as f:
                 json.dump(file_message, f, indent=4)
             
+            # Mostrar detalles del envío al usuario
             print(f"Archivo enviado a {receiver}.")
             print("\tCifrado: AES-256-CBC + RSA-2048")
             print("\tAutenticación: HMAC-SHA256")
+
+            # Mostrar el resultado en un log
+            print(f"--- Log de Envío de Archivo ---")
+            print(f"Cifrado Utilizado: {self.crypto.key_size * 8}-bit AES")
+            print(f"Clave Pública del Receptor: RSA-{self.asymmetric_crypto.key_size}-bit")
+            print(f"HMAC Utilizado: SHA-256")
+            print(f"--------------------------------")
+
             return True
+            
         
         except Exception as e:
             print(f"Error al enviar archivo: {e}")
@@ -111,6 +121,14 @@ class MessagingSystem:
                     # Verificar HMAC
                     hmac_valid = self.crypto.verify_hmac(file_data, hmac_key, message_data['hmac'])
 
+                    # Mostrar el resultado en un log
+                    print(f"--- Log de Recepción de Archivo ---")
+                    print(f"Descifrado de claves con RSA-{self.asymmetric_crypto.key_size}-bit")
+                    print(f"Descifrado de archivo con AES-{self.crypto.key_size * 8}-bit")
+                    print(f"Verificación HMAC-SHA256: {'Válido' if hmac_valid else 'Inválido'}")
+                    print(f"-----------------------------------")
+                    
+                    # Guardar mensaje a la lista
                     messages.append({
                         'sender': message_data['sender'],
                         'filename': message_data['filename'],

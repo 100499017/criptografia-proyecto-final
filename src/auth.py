@@ -40,7 +40,14 @@ def register_user(username: str, password: str) -> bool:
     with open(USERS_FILE, 'w') as f:
         json.dump(users, f, indent=4)
     
+    # Mensaje para el usuario
     print(f"Usuario '{username}' registrado con éxito.")
+
+    # Mostrar el resultado en un log
+    print(f"--- Log de Registro de Usuario ---")
+    print(f"Hashing Utilizado: Algoritmo Scrypt")
+    print(f"Parámetros Scrypt: N={2**14}, r=8, p=1 longitud=32 bytes")
+    print(f"----------------------------------")
 
     return True
 
