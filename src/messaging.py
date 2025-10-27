@@ -51,8 +51,11 @@ class MessagingSystem:
             # Cifrar archivo con AES
             encrypted_file = self.crypto.encrypt_aes(file_data, aes_key)
 
-            # Generar HMAC para autenticación
-            hmac_tag = self.crypto.generate_hmac(file_data, hmac_key)
+            # Generar HMAC sobre los datos cifrados para autenticación
+            data_to_authenticate = (encrypted_file['cyphertext'].encode() 
+                                + encrypted_file['iv'].encode())
+
+            hmac_tag = self.crypto.generate_hmac(data_to_authenticate, hmac_key)
 
             # Cifrar claves con clave pública del receptor
             encrypted_aes_key = self.asymmetric_crypto.encrypt_with_public_key(aes_key, receiver_public_key)
@@ -115,11 +118,19 @@ class MessagingSystem:
                     aes_key = self.asymmetric_crypto.decrypt_with_private_key(message_data['encrypted_aes_key'], private_key)
                     hmac_key = self.asymmetric_crypto.decrypt_with_private_key(message_data['encrypted_hmac_key'], private_key)
 
-                    # Descifrar archivo
-                    file_data = self.crypto.decrypt_aes(message_data['encrypted_file'], aes_key)
 
                     # Verificar HMAC
-                    hmac_valid = self.crypto.verify_hmac(file_data, hmac_key, message_data['hmac'])
+                    data_to_verify = (message_data['encrypted_file']['cyphertext'].encode() +
+                                       message_data['encrypted_file']['iv'].encode())
+
+                    hmac_valid = self.crypto.verify_hmac(data_to_verify, hmac_key, message_data['hmac'])
+
+                    if not hmac_valid:
+                        print(f"Advertencia: La integridad del mensaje de {message_data['sender']} no pudo ser verificada.")
+                        continue
+                    
+                    # Descifrar archivo si HMAC es válido
+                    file_data = self.crypto.decrypt_aes(message_data['encrypted_file'], aes_key)
 
                     # Mostrar el resultado en un log
                     print(f"--- Log de Recepción de Archivo ---")
@@ -127,7 +138,7 @@ class MessagingSystem:
                     print(f"Descifrado de archivo con AES-{self.crypto.key_size * 8}-bit")
                     print(f"Verificación HMAC-SHA256: {'Válido' if hmac_valid else 'Inválido'}")
                     print(f"-----------------------------------")
-                    
+
                     # Guardar mensaje a la lista
                     messages.append({
                         'sender': message_data['sender'],
