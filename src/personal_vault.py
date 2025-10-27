@@ -1,8 +1,8 @@
 # src/personal_vault.py
 import os
 import json
-from crypto import CryptoManager
-from asymmetric_crypto import AsymmetricCrypto
+from src.crypto import CryptoManager
+from src.asymmetric_crypto import AsymmetricCrypto
 
 class PersonalVault:
     def __init__(self, username: str):

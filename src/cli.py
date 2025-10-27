@@ -2,11 +2,11 @@
 import os
 import shutil
 from getpass import getpass
-from auth import register_user, login_user
-from user_manager import UserManager
-from personal_vault import PersonalVault
-from messaging import MessagingSystem
-from asymmetric_crypto import AsymmetricCrypto
+from src.auth import register_user, login_user
+from src.user_manager import UserManager
+from src.personal_vault import PersonalVault
+from src.messaging import MessagingSystem
+from src.asymmetric_crypto import AsymmetricCrypto
 
 def main_menu():
     """Muestra el menú principal y gestiona la entrada del usuario."""

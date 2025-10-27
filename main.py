@@ -1,6 +1,6 @@
 # main.py
 import os
-from src import main_menu
+from src.cli import main_menu
 
 def main():
     print("====================================")
