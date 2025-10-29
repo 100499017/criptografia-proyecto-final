@@ -38,8 +38,11 @@ class PersonalVault:
             # Cifrar archivo con AES
             encrypted_file = self.crypto.encrypt_aes(file_data, aes_key)
 
-            # Generar HMAC para autenticación
-            hmac_tag = self.crypto.generate_hmac(file_data, hmac_key)
+            # Generar HMAC sobre los datos cifrados (Encrypt-then-MAC)
+            data_to_authenticate = (encrypted_file['ciphertext'].encode()
+                                    + encrypted_file['iv'].encode())
+
+            hmac_tag = self.crypto.generate_hmac(data_to_authenticate, hmac_key)
 
             # Cifrar claves con RSA
             encrypted_aes_key = self.asymmetric_crypto.encrypt_with_public_key(aes_key, public_key)
@@ -60,7 +63,7 @@ class PersonalVault:
             
             print(f"Archivo {filename} guardado en la bóveda.")
             print("\tCifrado: AES-256-CBC")
-            print("\tAutenticación: HMAC-SHA256")
+            print("\tAutenticación: HMAC-SHA256 (Encrypt-then-MAC)")
             return True
         except Exception as e:
             print(f"Error: {e}")
@@ -78,15 +81,18 @@ class PersonalVault:
 
             # Descifrar claves AES y HMAC
             aes_key = self.asymmetric_crypto.decrypt_with_private_key(file_info['encrypted_aes_key'], private_key)
-            hmac_key = self.crypto.decrypt_data(file_info['encrypted_hmac_key'], private_key)
+            hmac_key = self.asymmetric_crypto.decrypt_with_private_key(file_info['encrypted_hmac_key'], private_key)
 
-            # Descifrar archivo
-            decrypted_data = self.crypto.decrypt_aes(file_info['encrypted_data'], aes_key)
+            # Verificar HMAC sobre datos cifrados antes de descifrar
+            data_to_verify = (file_info['encrypted_data']['ciphertext'].encode()
+                              + file_info['encrypted_data']['iv'].encode())
 
-            # Verificar autenticación con HMAC
-            if not self.crypto.verify_hmac(decrypted_data, hmac_key, file_info['hmac']):
+            if not self.crypto.verify_hmac(data_to_verify, hmac_key, file_info['hmac']):
                 print("Error: El archivo ha sido modificado o está corrupto")
                 return False
+            
+            # Descifrar archivo solo si HMAC es válido
+            decrypted_data = self.crypto.decrypt_aes(file_info['encrypted_data'], aes_key)
 
             # Guardar archivo
             with open(output_path, 'wb') as f:
