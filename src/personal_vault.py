@@ -105,6 +105,21 @@ class PersonalVault:
             print(f"Error al recuperar archivo: {e}")
             return False
     
+    def delete_file(self, filename: str) -> bool:
+        """Elimina un archivo de la bóveda personal"""
+        try:
+            file_path = f'{self.vault_dir}/{filename}.enc'
+            if os.path.exists(file_path):
+                os.remove(file_path)
+                print(f"Archivo '{filename}' eliminado de la bóveda.")
+                return True
+            else:
+                print("Error: El archivo no existe en la bóveda.")
+                return False
+        except Exception as e:
+            print(f"Error al eliminar archivo: {e}")
+            return False
+    
     def list_files(self):
         """Lista archivos en bóveda"""
         files = []

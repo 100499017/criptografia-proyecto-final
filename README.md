@@ -54,9 +54,10 @@ Este proyecto es un sistema de mensajería segura que permite a los usuarios reg
    - **Borrar todos los datos y salir**: Elimina todos los datos del sistema (usuarios, claves, bóvedas, mensajes) y sale.
   
 3. Una vez dentro de la sesión de usuario, puedes:
-   - **Guardar archivo en tu bóveda**: Cifra y almacena un archivo en tu bóveda personal.
-   - **Recuperar archivo de tu bóveda**: Descifra y recupera un archivo de tu bóveda.
-   - **Listar tus archivos**: Muestra los archivos almacenados en tu bóveda.
+   - **Guardar archivo en mi bóveda**: Cifra y almacena un archivo en tu bóveda personal.
+   - **Recuperar archivo de mi bóveda**: Descifra y recupera un archivo de tu bóveda.
+   - **Listar mis archivos**: Muestra los archivos almacenados en tu bóveda.
+   - **Eliminar archivo de mi bóveda**: Elimina un archivo almacenado en tu bóveda.
    - **Enviar archivo a otro usuario**: Cifra y envía un archivo a otro usuario registrado.
    - **Ver archivos recibidos**: Lista los archivos que te han enviado y te da la opción de descargarlos.
    - **Listar usuarios**: Muestra todos los usuarios registrados.

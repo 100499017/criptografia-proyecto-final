@@ -72,10 +72,11 @@ def user_menu(username, password):
         print("1. Guardar archivo en mi bóveda")
         print("2. Recuperar archivo de mi bóveda")
         print("3. Listar mis archivos")
-        print("4. Enviar archivo a otro usuario")
-        print("5. Ver archivos recibidos")
-        print("6. Listar usuarios")
-        print("7. Cerrar sesión")
+        print("4. Eliminar archivo de mi bóveda")
+        print("5. Enviar archivo a otro usuario")
+        print("6. Ver archivos recibidos")
+        print("7. Listar usuarios")
+        print("8. Cerrar sesión")
 
         choice = input("Seleccione una opción: ")
 
@@ -97,8 +98,19 @@ def user_menu(username, password):
 
         elif choice == '3':
             vault.list_files()
-
+        
         elif choice == '4':
+            files = vault.list_files()
+            if files:
+                filename = input("Nombre del archivo: ")
+                confirm = input(f"¿Está seguro de eliminar '{filename}'? (s/n): ")
+                if confirm.lower() == 's':
+                    vault.delete_file(filename)
+                    print(f"Archivo '{filename}' eliminado con éxito.")
+                else:
+                    print("Eliminación cancelada.")
+
+        elif choice == '5':
             receiver = input("Usuario destino: ")
             file_path = input("Ruta del archivo: ")
             message = input("Mensaje (opcional): ")
@@ -108,7 +120,7 @@ def user_menu(username, password):
             else:
                 print("El archivo no existe")
 
-        elif choice == '5':
+        elif choice == '6':
             password = getpass("Su contraseña: ")
             messages = messaging.get_messages(username, password)
 
@@ -125,14 +137,23 @@ def user_menu(username, password):
                         messaging.save_received_file(username, msg)
                 else:
                     print("No se puede descargar - HMAC inválido")
+                
+                delete_msg = input("¿Eliminar este mensaje? (s/n): ")
+                if delete_msg.lower() == 's':
+                    if messaging.delete_message_file(username, msg['message_file']):
+                        print("Mensaje eliminado.")
+                    else:
+                        print("Error al eliminar el mensaje.")
+                else:
+                    print("Mensaje conservado.")
 
-        elif choice == '6':
+        elif choice == '7':
             users = user_manager.list_users()
             print("\nUsuarios registrados:")
             for user in users:
                 print(f"\t- {user}")
         
-        elif choice == '7':
+        elif choice == '8':
             print("Cerrando sesión...")
             break
         

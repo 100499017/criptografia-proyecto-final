@@ -103,13 +103,13 @@ class MessagingSystem:
         """Obtiene mensajes recibidos"""
         try:
             user_dir = f'{self.messages_dir}/{username}'
-            if not os.path.exists(user_dir):
+            if not os.path.exists(user_dir) or not os.listdir(user_dir):
                 print("No hay mensajes")
                 return []
             
             messages = []
             for message_file in os.listdir(user_dir):
-                if message_file.endswith('.json'):
+                try:
                     with open(f'{user_dir}/{message_file}', 'r') as f:
                         message_data = json.load(f)
                     
@@ -127,7 +127,6 @@ class MessagingSystem:
 
                     if not hmac_valid:
                         print(f"Advertencia: La integridad del mensaje de {message_data['sender']} no pudo ser verificada.")
-                        continue
                     
                     # Descifrar archivo si HMAC es válido
                     file_data = self.crypto.decrypt_aes(message_data['encrypted_file'], aes_key)
@@ -145,8 +144,13 @@ class MessagingSystem:
                         'filename': message_data['filename'],
                         'message': message_data['message'],
                         'file_data': file_data,
-                        'hmac_valid': hmac_valid
+                        'hmac_valid': hmac_valid,
+                        'message_file': message_file
                     })
+                
+                except Exception as e:
+                    print(f"Error procesando mensaje {message_file}: {e}")
+                    continue
                 
             return messages
         
@@ -168,4 +172,16 @@ class MessagingSystem:
             
         except Exception as e:
             print(f"Error al guardar archivo: {e}")
+            return False
+    
+    def delete_message_file(self, username: str, message_file: str) -> bool:
+        """Elimina un archivo de mensaje específico"""
+        try:
+            file_path = f'{self.messages_dir}/{username}/{message_file}'
+            if os.path.exists(file_path):
+                os.remove(file_path)
+                return True
+            return False
+        except Exception as e:
+            print(f"Error eliminando mensaje: {e}")
             return False
