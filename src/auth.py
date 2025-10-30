@@ -30,7 +30,7 @@ def register_user(username: str, password: str) -> bool:
 
     password_hash = kdf.derive(password.encode())
 
-    # Guarda el usuario, el salt (en hexadecimal) y el hash (en hexadecimal)
+    # Guarda el usuario, el salt y el hash en base64
     users[username] = {
         'salt': base64.b64encode(salt).decode(),
         'password_hash': base64.b64encode(password_hash).decode('utf-8')
