@@ -52,7 +52,7 @@ class MessagingSystem:
             encrypted_file = self.crypto.encrypt_aes(file_data, aes_key)
 
             # Generar HMAC sobre los datos cifrados para autenticación
-            data_to_authenticate = (encrypted_file['cyphertext'].encode() 
+            data_to_authenticate = (encrypted_file['ciphertext'].encode() 
                                 + encrypted_file['iv'].encode())
 
             hmac_tag = self.crypto.generate_hmac(data_to_authenticate, hmac_key)
@@ -83,7 +83,7 @@ class MessagingSystem:
             # Mostrar detalles del envío al usuario
             print(f"Archivo enviado a {receiver}.")
             print("\tCifrado: AES-256-CBC + RSA-2048")
-            print("\tAutenticación: HMAC-SHA256")
+            print("\tAutenticación: HMAC-SHA256 (Encrypt-then-MAC)")
 
             # Mostrar el resultado en un log
             print(f"--- Log de Envío de Archivo ---")
@@ -103,13 +103,13 @@ class MessagingSystem:
         """Obtiene mensajes recibidos"""
         try:
             user_dir = f'{self.messages_dir}/{username}'
-            if not os.path.exists(user_dir):
+            if not os.path.exists(user_dir) or not os.listdir(user_dir):
                 print("No hay mensajes")
                 return []
             
             messages = []
             for message_file in os.listdir(user_dir):
-                if message_file.endswith('.json'):
+                try:
                     with open(f'{user_dir}/{message_file}', 'r') as f:
                         message_data = json.load(f)
                     
@@ -120,14 +120,13 @@ class MessagingSystem:
 
 
                     # Verificar HMAC
-                    data_to_verify = (message_data['encrypted_file']['cyphertext'].encode() +
+                    data_to_verify = (message_data['encrypted_file']['ciphertext'].encode() +
                                        message_data['encrypted_file']['iv'].encode())
 
                     hmac_valid = self.crypto.verify_hmac(data_to_verify, hmac_key, message_data['hmac'])
 
                     if not hmac_valid:
                         print(f"Advertencia: La integridad del mensaje de {message_data['sender']} no pudo ser verificada.")
-                        continue
                     
                     # Descifrar archivo si HMAC es válido
                     file_data = self.crypto.decrypt_aes(message_data['encrypted_file'], aes_key)
@@ -136,7 +135,7 @@ class MessagingSystem:
                     print(f"--- Log de Recepción de Archivo ---")
                     print(f"Descifrado de claves con RSA-{self.asymmetric_crypto.key_size}-bit")
                     print(f"Descifrado de archivo con AES-{self.crypto.key_size * 8}-bit")
-                    print(f"Verificación HMAC-SHA256: {'Válido' if hmac_valid else 'Inválido'}")
+                    print(f"Verificación HMAC-SHA256 (Encrypt-then-MAC): {'Válido' if hmac_valid else 'Inválido'}")
                     print(f"-----------------------------------")
 
                     # Guardar mensaje a la lista
@@ -145,8 +144,13 @@ class MessagingSystem:
                         'filename': message_data['filename'],
                         'message': message_data['message'],
                         'file_data': file_data,
-                        'hmac_valid': hmac_valid
+                        'hmac_valid': hmac_valid,
+                        'message_file': message_file
                     })
+                
+                except Exception as e:
+                    print(f"Error procesando mensaje {message_file}: {e}")
+                    continue
                 
             return messages
         
@@ -168,4 +172,16 @@ class MessagingSystem:
             
         except Exception as e:
             print(f"Error al guardar archivo: {e}")
+            return False
+    
+    def delete_message_file(self, username: str, message_file: str) -> bool:
+        """Elimina un archivo de mensaje específico"""
+        try:
+            file_path = f'{self.messages_dir}/{username}/{message_file}'
+            if os.path.exists(file_path):
+                os.remove(file_path)
+                return True
+            return False
+        except Exception as e:
+            print(f"Error eliminando mensaje: {e}")
             return False
