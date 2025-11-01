@@ -72,17 +72,13 @@ def login_user(username: str, password: str) -> str:
     kdf = Scrypt(salt=salt, length=32, n=2**14, r=8, p=1)
     
     try:
-        password_hash_attempt = kdf.derive(password.encode())
-
         # Compara los hashes de la contraseña guardada y la introducida
-        if password_hash_attempt == password_hash_stored:
-            print("Inicio de sesión exitoso.")
-            return username
-        else:
-            print("Error: Usuario o contraseña incorrectos.")
-            return None
-    except:
-        print("Error: Contraseña incorrecta.")
+        kdf.verify(password.encode(), password_hash_stored)
+        print("Inicio de sesión exitoso.")
+        return username
+    
+    except Exception:
+        print("Error: Usuario o contraseña incorrectos.")
         return None
 
 def set_users_file_for_testing(new_path):
