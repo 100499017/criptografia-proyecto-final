@@ -129,14 +129,14 @@ def user_menu(username, password):
                 print(f"De: {msg['sender']}")
                 print(f"Archivo: {msg['filename']}")
                 print(f"Mensaje: {msg['message']}")
-                print(f"HMAC válido: {'Sí' if msg['hmac_valid'] else 'No'}")
+                print(f"HMAC válido: {'Sí' if msg['auth_success'] else 'No'}")
 
-                if msg['hmac_valid']:
+                if msg['auth_success']:
                     save = input("¿Descargar archivo? (s/n)")
                     if save.lower() == 's':
                         messaging.save_received_file(username, msg)
                 else:
-                    print("No se puede descargar - HMAC inválido")
+                    print("No se puede descargar - Autenticación inválida")
                 
                 delete_msg = input("¿Eliminar este mensaje? (s/n): ")
                 if delete_msg.lower() == 's':

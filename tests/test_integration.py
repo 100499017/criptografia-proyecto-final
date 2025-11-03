@@ -50,15 +50,10 @@ class TestIntegration(unittest.TestCase):
         test_data = b"Esto es una prueba de integracion"
         key = crypto.generate_symmetric_key()
         
-        encrypted = crypto.encrypt_aes(test_data, key)
-        decrypted = crypto.decrypt_aes(encrypted, key)
+        encrypted = crypto.encrypt_aes_gcm(test_data, key)
+        decrypted = crypto.decrypt_aes_gcm(encrypted, key)
         
         self.assertEqual(test_data, decrypted)
-        
-        # 4. Probar HMAC
-        hmac_tag = crypto.generate_hmac(test_data, key)
-        verification = crypto.verify_hmac(test_data, key, hmac_tag)
-        self.assertTrue(verification)
         
         # 5. Probar RSA
         rsa_crypto = AsymmetricCrypto()

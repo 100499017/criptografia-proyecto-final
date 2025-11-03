@@ -31,42 +31,32 @@ class PersonalVault:
             private_key = self._get_private_key(password)
             public_key = private_key.public_key()
 
-            # Generar claves para este archivo
+            # Generar clave AES única para este archivo
             aes_key = self.crypto.generate_symmetric_key()
-            hmac_key = self.crypto.generate_symmetric_key()
 
-            # Cifrar archivo con AES
-            encrypted_file = self.crypto.encrypt_aes(file_data, aes_key)
+            # Cifrar archivo con AES-GCM (incluye autenticación integrada)
+            encrypted_file = self.crypto.encrypt_aes_gcm(file_data, aes_key)
 
-            # Generar HMAC sobre los datos cifrados (Encrypt-then-MAC)
-            data_to_authenticate = (encrypted_file['ciphertext'].encode()
-                                    + encrypted_file['iv'].encode())
-
-            hmac_tag = self.crypto.generate_hmac(data_to_authenticate, hmac_key)
-
-            # Cifrar claves con RSA
+            # Cifrar la clave AES con RSA
             encrypted_aes_key = self.asymmetric_crypto.encrypt_with_public_key(aes_key, public_key)
-            encrypted_hmac_key = self.asymmetric_crypto.encrypt_with_public_key(hmac_key, public_key)
 
-            # Guardar
+            # Guardar archivo cifrado
             filename = os.path.basename(file_path)
             file_info = {
                 'filename': filename,
-                'encrypted_aes_key': encrypted_aes_key,
-                'encrypted_hmac_key': encrypted_hmac_key,
-                'encrypted_data': encrypted_file,
-                'hmac': hmac_tag
+                'encrypted_key': encrypted_aes_key,
+                'encrypted_data': encrypted_file
             }
 
             with open(f'{self.vault_dir}/{filename}.enc', 'w') as f:
                 json.dump(file_info, f, indent=4)
             
             print(f"Archivo {filename} guardado en la bóveda.")
-            print("\tCifrado: AES-256-CBC")
-            print("\tAutenticación: HMAC-SHA256 (Encrypt-then-MAC)")
+            print("\tCifrado: AES-256-GCM (cifrado autenticado)")
             return True
+        
         except Exception as e:
-            print(f"Error: {e}")
+            print(f"Error al guardar archivo: {e}")
             return False
     
     def retrieve_file(self, filename, password, output_path):
@@ -79,20 +69,15 @@ class PersonalVault:
             # Cargar claves
             private_key = self._get_private_key(password)
 
-            # Descifrar claves AES y HMAC
-            aes_key = self.asymmetric_crypto.decrypt_with_private_key(file_info['encrypted_aes_key'], private_key)
-            hmac_key = self.asymmetric_crypto.decrypt_with_private_key(file_info['encrypted_hmac_key'], private_key)
-
-            # Verificar HMAC sobre datos cifrados antes de descifrar
-            data_to_verify = (file_info['encrypted_data']['ciphertext'].encode()
-                              + file_info['encrypted_data']['iv'].encode())
-
-            if not self.crypto.verify_hmac(data_to_verify, hmac_key, file_info['hmac']):
-                print("Error: El archivo ha sido modificado o está corrupto")
-                return False
+            # Descifrar clave AES
+            aes_key = self.asymmetric_crypto.decrypt_with_private_key(file_info['encrypted_key'], private_key)
             
-            # Descifrar archivo solo si HMAC es válido
-            decrypted_data = self.crypto.decrypt_aes(file_info['encrypted_data'], aes_key)
+            # Descifrar archivo (GCM verifica autenticación automáticamente)
+            try:
+                decrypted_data = self.crypto.decrypt_aes_gcm(file_info['encrypted_data'], aes_key)
+            except Exception as e:
+                print(f"Error al descifrar archivo: {e}")
+                return False
 
             # Guardar archivo
             with open(output_path, 'wb') as f:

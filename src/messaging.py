@@ -44,32 +44,22 @@ class MessagingSystem:
             sender_private_key = self._get_private_key(sender, password)
             receiver_public_key = self._get_public_key(receiver)
 
-            # Generar claves para este archivo
+            # Generar clave AES para este archivo
             aes_key = self.crypto.generate_symmetric_key()
-            hmac_key = self.crypto.generate_symmetric_key()
 
-            # Cifrar archivo con AES
-            encrypted_file = self.crypto.encrypt_aes(file_data, aes_key)
+            # Cifrar archivo con AES-GCM
+            encrypted_file = self.crypto.encrypt_aes_gcm(file_data, aes_key)
 
-            # Generar HMAC sobre los datos cifrados para autenticación
-            data_to_authenticate = (encrypted_file['ciphertext'].encode() 
-                                + encrypted_file['iv'].encode())
-
-            hmac_tag = self.crypto.generate_hmac(data_to_authenticate, hmac_key)
-
-            # Cifrar claves con clave pública del receptor
+            # Cifrar la clave AES con RSA del receptor
             encrypted_aes_key = self.asymmetric_crypto.encrypt_with_public_key(aes_key, receiver_public_key)
-            encrypted_hmac_key = self.asymmetric_crypto.encrypt_with_public_key(hmac_key, receiver_public_key)
 
             # Crear mensaje
             file_message = {
                 'sender': sender,
                 'filename': os.path.basename(file_path),
                 'message': message,
-                'encrypted_aes_key': encrypted_aes_key,
-                'encrypted_hmac_key': encrypted_hmac_key,
-                'encrypted_file': encrypted_file,
-                'hmac': hmac_tag
+                'encrypted_key': encrypted_aes_key,
+                'encrypted_file': encrypted_file
             }
 
             # Guardar mensaje
@@ -82,14 +72,12 @@ class MessagingSystem:
             
             # Mostrar detalles del envío al usuario
             print(f"Archivo enviado a {receiver}.")
-            print("\tCifrado: AES-256-CBC + RSA-2048")
-            print("\tAutenticación: HMAC-SHA256 (Encrypt-then-MAC)")
+            print("\tCifrado: AES-256-GCM (cifrado autenticado)")
 
             # Mostrar el resultado en un log
             print(f"--- Log de Envío de Archivo ---")
-            print(f"Cifrado Utilizado: {self.crypto.key_size * 8}-bit AES")
+            print(f"Cifrado Utilizado: {self.crypto.key_size * 8}-bit AES-GCM")
             print(f"Clave Pública del Receptor: RSA-{self.asymmetric_crypto.key_size}-bit")
-            print(f"HMAC Utilizado: SHA-256")
             print(f"--------------------------------")
 
             return True
@@ -113,29 +101,25 @@ class MessagingSystem:
                     with open(f'{user_dir}/{message_file}', 'r') as f:
                         message_data = json.load(f)
                     
-                    # Descifrar claves
+                    # Descifrar clave AES
                     private_key = self._get_private_key(username, password)
-                    aes_key = self.asymmetric_crypto.decrypt_with_private_key(message_data['encrypted_aes_key'], private_key)
-                    hmac_key = self.asymmetric_crypto.decrypt_with_private_key(message_data['encrypted_hmac_key'], private_key)
-
-
-                    # Verificar HMAC
-                    data_to_verify = (message_data['encrypted_file']['ciphertext'].encode() +
-                                       message_data['encrypted_file']['iv'].encode())
-
-                    hmac_valid = self.crypto.verify_hmac(data_to_verify, hmac_key, message_data['hmac'])
-
-                    if not hmac_valid:
-                        print(f"Advertencia: La integridad del mensaje de {message_data['sender']} no pudo ser verificada.")
+                    aes_key = self.asymmetric_crypto.decrypt_with_private_key(message_data['encrypted_key'], private_key)
                     
-                    # Descifrar archivo si HMAC es válido
-                    file_data = self.crypto.decrypt_aes(message_data['encrypted_file'], aes_key)
+                    # Descifrar archivo (GCM verifica autenticación automáticamente)
+                    try:
+                        file_data = self.crypto.decrypt_aes_gcm(message_data['encrypted_file'], aes_key)
+                        auth_success = True
+                        auth_error = None
+                    except Exception as e:
+                        file_data = None
+                        auth_success = False
+                        auth_error = str(e)
 
                     # Mostrar el resultado en un log
                     print(f"--- Log de Recepción de Archivo ---")
                     print(f"Descifrado de claves con RSA-{self.asymmetric_crypto.key_size}-bit")
                     print(f"Descifrado de archivo con AES-{self.crypto.key_size * 8}-bit")
-                    print(f"Verificación HMAC-SHA256 (Encrypt-then-MAC): {'Válido' if hmac_valid else 'Inválido'}")
+                    print(f"Autenticación: {'Válida' if auth_success else 'Inválida'}")
                     print(f"-----------------------------------")
 
                     # Guardar mensaje a la lista
@@ -144,7 +128,8 @@ class MessagingSystem:
                         'filename': message_data['filename'],
                         'message': message_data['message'],
                         'file_data': file_data,
-                        'hmac_valid': hmac_valid,
+                        'auth_success': auth_success,
+                        'auth_error': auth_error,
                         'message_file': message_file
                     })
                 

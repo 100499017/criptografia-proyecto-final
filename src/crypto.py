@@ -1,69 +1,46 @@
 # src/crypto.py
 import os
-from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
-from cryptography.hazmat.primitives import hashes, hmac, padding
+from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 import base64
 
 class CryptoManager:
     def __init__(self):
-        self.key_size = 32    # AES-256
+        self.key_size = 32   # AES-256
+        self.nonce_size = 12 # 96 bits recomendado para GCM
     
     def generate_symmetric_key(self):
         """Genera una clave simétrica aleatoria para AES-GCM"""
-        return os.urandom(self.key_size)
+        return AESGCM.generate_key(bit_length=self.key_size*8)
 
-    def encrypt_aes(self, data: bytes, key: bytes) -> dict:
-        """Cifra los datos usando AES-256-CBC con padding PKCS7"""
-        # Generar IV aleatorio
-        iv = os.urandom(16)
+    def encrypt_aes_gcm(self, data: bytes, key: bytes) -> dict:
+        """Cifra los datos usando AES-256-GCM (cifrado autenticado)"""
+        # Generar nonce aleatorio
+        nonce = os.urandom(self.nonce_size)
 
-        # Configurar cifrador
-        cipher = Cipher(algorithms.AES(key), modes.CBC(iv))
-        encryptor = cipher.encryptor()
+        # Crear instancia de AES-GCM
+        aesgcm = AESGCM(key)
 
-        # Aplicar padding
-        padder = padding.PKCS7(128).padder()
-        padded_data = padder.update(data) + padder.finalize()
-
-        # Cifrar
-        ciphertext = encryptor.update(padded_data) + encryptor.finalize()
+        # Cifrar datos (GCM incluye autenticación automáticamente)
+        ciphertext = aesgcm.encrypt(nonce, data, None)
 
         return {
             'ciphertext': base64.b64encode(ciphertext).decode(),
-            'iv': base64.b64encode(iv).decode(),
-            'algorithm': 'AES-256-CBC'
+            'nonce': base64.b64encode(nonce).decode(),
+            'algorithm': 'AES-256-GCM'
         }
     
-    def decrypt_aes(self, encrypted_data: dict, key: bytes) -> bytes:
-        """Descifra los datos usando AES-256-CBC"""
+    def decrypt_aes_gcm(self, encrypted_data: dict, key: bytes) -> bytes:
+        """Descifra los datos usando AES-256-GCM"""
         ciphertext = base64.b64decode(encrypted_data['ciphertext'])
-        iv = base64.b64decode(encrypted_data['iv'])
+        nonce = base64.b64decode(encrypted_data['nonce'])
 
-        # Configurar descifrador
-        cipher = Cipher(algorithms.AES(key), modes.CBC(iv))
-        decryptor = cipher.decryptor()
+        # Crear instancia de AES-GCM
+        aesgcm = AESGCM(key)
 
-        # Descifrar
-        padded_plaintext = decryptor.update(ciphertext) + decryptor.finalize()
-
-        # Quitar padding
-        unpadder = padding.PKCS7(128).unpadder()
-        plaintext = unpadder.update(padded_plaintext) + unpadder.finalize()
-
-        return plaintext
-
-    def generate_hmac(self, data: bytes, key: bytes) -> str:
-        """Genera un HMAC-SHA256 para autenticar los datos"""
-        h = hmac.HMAC(key, hashes.SHA256())
-        h.update(data)
-        return base64.b64encode(h.finalize()).decode()
-    
-    def verify_hmac(self, data: bytes, key: bytes, hmac_tag: str) -> bool:
-        """Verifica un HMAC para autenticar los datos"""
+        # Descifrar y verificar autenticación
         try:
-            h = hmac.HMAC(key, hashes.SHA256())
-            h.update(data)
-            h.verify(base64.b64decode(hmac_tag))
-            return True
-        except Exception:
-            return False
+            plaintext = aesgcm.decrypt(nonce, ciphertext, None)
+            return plaintext
+        except Exception as e:
+            print(f"Error de autenticación GCM: {e}")
+            return None

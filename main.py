@@ -19,7 +19,8 @@ def setup_directories():
         'data/keys',
         'data/public_keys',
         'data/vault',
-        'data/messages'
+        'data/messages',
+        'downloads'
     ]
 
     for directory in directories:
