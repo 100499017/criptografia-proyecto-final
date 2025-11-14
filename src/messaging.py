@@ -5,11 +5,17 @@ import uuid
 from src.crypto import CryptoManager
 from src.asymmetric_crypto import AsymmetricCrypto
 from src.user_manager import UserManager
+from src.signer import Signer
+
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.asymmetric import padding, utils
+import base64
 
 class MessagingSystem:
     def __init__(self):
         self.crypto = CryptoManager()
         self.asymmetric_crypto = AsymmetricCrypto()
+        self.signer = Signer()
         self.messages_dir = 'data/messages'
         
         os.makedirs(self.messages_dir, exist_ok=True)
@@ -53,13 +59,20 @@ class MessagingSystem:
             # Cifrar la clave AES con RSA del receptor
             encrypted_aes_key = self.asymmetric_crypto.encrypt_with_public_key(aes_key, receiver_public_key)
 
+            # Firmar archivo cifrado
+            signature = self.signer.sign_data(
+                base64.b64decode(encrypted_file['ciphertext']),
+                sender_private_key
+            )
+
             # Crear mensaje
             file_message = {
                 'sender': sender,
                 'filename': os.path.basename(file_path),
                 'message': message,
                 'encrypted_key': encrypted_aes_key,
-                'encrypted_file': encrypted_file
+                'encrypted_file': encrypted_file,
+                'signature': base64.b64encode(signature).decode()
             }
 
             # Guardar mensaje
@@ -78,6 +91,7 @@ class MessagingSystem:
             print(f"--- Log de Envío de Archivo ---")
             print(f"Cifrado Utilizado: {self.crypto.key_size * 8}-bit AES-GCM")
             print(f"Clave Pública del Receptor: RSA-{self.asymmetric_crypto.key_size}-bit")
+            print(f"Firma Digital: RSA-2048 (PSS) con SHA-256")
             print(f"--------------------------------")
 
             return True
@@ -106,20 +120,31 @@ class MessagingSystem:
                     aes_key = self.asymmetric_crypto.decrypt_with_private_key(message_data['encrypted_key'], private_key)
                     
                     # Descifrar archivo (GCM verifica autenticación automáticamente)
-                    try:
-                        file_data = self.crypto.decrypt_aes_gcm(message_data['encrypted_file'], aes_key)
-                        auth_success = True
-                        auth_error = None
-                    except Exception as e:
-                        file_data = None
+                    file_data = self.crypto.decrypt_aes_gcm(message_data['encrypted_file'], aes_key)
+                    
+                    # Verificar firma digital
+                    signature = base64.b64decode(message_data['signature'])
+                    sender_public_key = self._get_public_key(message_data['sender'])
+                    auth_success = self.signer.verify_signature(
+                        base64.b64decode(message_data['encrypted_file']['ciphertext']),
+                        signature,
+                        sender_public_key
+                    )
+
+                    sign_verify = True
+                    auth_success = True
+
+                    if not signature:
                         auth_success = False
-                        auth_error = str(e)
+                    if not file_data:
+                        sign_verify = False
 
                     # Mostrar el resultado en un log
                     print(f"--- Log de Recepción de Archivo ---")
                     print(f"Descifrado de claves con RSA-{self.asymmetric_crypto.key_size}-bit")
                     print(f"Descifrado de archivo con AES-{self.crypto.key_size * 8}-bit")
-                    print(f"Autenticación: {'Válida' if auth_success else 'Inválida'}")
+                    print(f"Autenticación del receptor: {'Válida' if auth_success else 'Inválida'}")
+                    print(f"Verificación de firma: {'Válida' if sign_verify else 'Inválida'}")
                     print(f"-----------------------------------")
 
                     # Guardar mensaje a la lista
@@ -129,7 +154,7 @@ class MessagingSystem:
                         'message': message_data['message'],
                         'file_data': file_data,
                         'auth_success': auth_success,
-                        'auth_error': auth_error,
+                        'sign_verify': sign_verify,
                         'message_file': message_file
                     })
                 

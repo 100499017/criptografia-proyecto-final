@@ -130,9 +130,10 @@ def user_menu(username, password):
                 print(f"Archivo: {msg['filename']}")
                 print(f"Mensaje: {msg['message']}")
                 print(f"HMAC válido: {'Sí' if msg['auth_success'] else 'No'}")
+                print(f"Firma válida: {'Sí' if msg['sign_verify'] else 'No'}")
 
                 if msg['auth_success']:
-                    save = input("¿Descargar archivo? (s/n)")
+                    save = input("¿Descargar archivo? (s/n): ")
                     if save.lower() == 's':
                         messaging.save_received_file(username, msg)
                 else:
