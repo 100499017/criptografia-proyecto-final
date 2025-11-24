@@ -1,4 +1,4 @@
-# run_all_tests.py
+# tests/run_tests.py
 import sys
 import os
 import unittest

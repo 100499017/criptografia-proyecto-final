@@ -39,7 +39,7 @@ class PKIManager:
         ).not_valid_after(
             datetime.now(timezone.utc) + timedelta(days=3650) # 10 años
         ).add_extension(
-            x509.BasicContraints(ca=True, path_length=None),
+            x509.BasicConstraints(ca=True, path_length=None),
             critical=True
         ).sign(private_key, hashes.SHA256())
 
@@ -88,7 +88,7 @@ class PKIManager:
         ).not_valid_after(
             datetime.now(timezone.utc) + timedelta(days=1825) # 5 años
         ).add_extension(
-            x509.BaseContraints(ca=True, path_length=0),
+            x509.BasicConstraints(ca=True, path_length=0),
             critical=True
         ).sign(parent_private_key, hashes.SHA256())
 

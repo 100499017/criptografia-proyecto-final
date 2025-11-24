@@ -34,7 +34,7 @@ class DigitalSignature:
             hasher.update(data)
             digest = hasher.finalize()
             public_key.verify(
-                signature,
+                signature_bytes,
                 digest,
                 padding.PSS(
                     mgf=padding.MGF1(hashes.SHA256()),

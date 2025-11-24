@@ -22,11 +22,13 @@ class MessagingSystem:
         return self.asymmetric_crypto.load_private_key(private_pem, password)
     
     def _get_public_key(self, username):
-        """Obtiene clave pública del usuario"""
-        key_path = f'data/public_keys/{username}_public.pem'
-        with open(key_path, 'rb') as f:
-            public_pem = f.read()
-        return self.asymmetric_crypto.load_public_key(public_pem)
+        """Obtiene la clave pública de un usuario desde su certificado"""
+        try:
+            user_manager = UserManager()
+            return user_manager.get_public_key_from_certificate(username)
+        except Exception as e:
+            print(f"Error obteniendo clave pública de {username}: {e}")
+            return None
     
     def send_file(self, sender, receiver, file_path, password, message=""):
         """Envía archivo a otro usuario"""
