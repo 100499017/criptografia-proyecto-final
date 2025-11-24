@@ -15,6 +15,8 @@ def main():
         'test_crypto',
         'test_asymmetric_crypto',
         'test_user_manager',
+        'test_digital_signature',
+        'test_pki',
         'test_integration'
     ]
 
