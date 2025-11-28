@@ -1,5 +1,6 @@
 # main.py
 import os
+import sys
 from src.cli import main_menu
 
 def main():
@@ -32,4 +33,11 @@ def setup_directories():
             f.write('{}')
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except KeyboardInterrupt:
+        print("\n\nSaliendo de la aplicación...")
+        sys.exit(0)
+    except Exception as e:
+        print(f"\nOcurrió un error inesperado: {e}")
+        sys.exit(1)

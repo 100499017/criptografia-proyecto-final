@@ -48,38 +48,44 @@ def main_menu():
             password = getpass("Ingrese contraseña: ")
 
             if register_user(username, password):
-                # Generar claves RSA
-                crypto = AsymmetricCrypto()
-                private_pem, public_pem = crypto.generate_keypair(password)
+                print("\n[1/4] Usuario registrado en base de datos.")
+                
+                try:
+                    # Generar par de claves RSA para el usuario
+                    print("[2/4] Generando claves criptográficas RSA-2048...")
+                    crypto = AsymmetricCrypto()
+                    private_pem, public_pem = crypto.generate_keypair(password)
 
-                # Guardar claves
-                os.makedirs(f'data/keys/{username}', exist_ok=True)
-                with open(f'data/keys/{username}/private_key.pem', 'wb') as f:
-                    f.write(private_pem)
-                with open(f'data/public_keys/{username}_public.pem', 'wb') as f:
-                    f.write(public_pem)
+                    # Crear directorio de claves del usuario
+                    os.makedirs(f'data/keys/{username}', exist_ok=True)
 
-                print("Claves RSA-2048 generadas con éxito.")
+                    # Guardar claves
+                    with open(f'data/keys/{username}/private_key.pem', 'wb') as f:
+                        f.write(private_pem)
+                    with open(f'data/public_keys/{username}_public.pem', 'wb') as f:
+                        f.write(public_pem)
+                    
+                    # Generar CSR
+                    print("[3/4] Generando Solicitud de Firma de Certificado (CSR)...")
+                    pki = PKIManager()
+                    private_key = crypto.load_private_key(private_pem, password)
 
-                # Emitir certificado
-                pki = PKIManager()
-                user_manager = UserManager()
+                    csr = pki.generate_user_csr(private_key, username)
 
-                # Cargar SubCA
-                subca_private_key = pki.load_private_key("SubCA", "subca_password")
-                subca_cert = pki.load_ca_certificate("SubCA")
+                    # Enviar CSR a la CA para que emita el certificado
+                    print("[4/4] Enviando CSR a la SubCA para emisión de certificado...")
+                    cert = pki.issue_certificate(csr, "SubCA", "subca_password")
 
-                # Cargar clave pública del usuario
-                public_key = crypto.load_public_key(public_pem)
+                    # Guardar el certificado público resultante
+                    user_manager = UserManager()
+                    user_manager.save_user_certificate(username, cert)
 
-                # Emitir certificado
-                user_cert = pki.issue_certificate(username, public_key, subca_private_key, subca_cert)
-                user_manager.save_user_certificate(username, user_cert)
+                    print(f"\n¡Registro completado! Bienvenido, {username}.")
 
-                print("Usuario registrado con certificado digital.")
-
+                except Exception as e:
+                    print(f"\nError durante la generación de claves/certificados: {e}")
             else:
-                print("El registro falló. Inténtelo de nuevo.")
+                print(f"\nEl registro falló (el usuario ya existe o datos inválidos).")
 
         elif choice == '2':
             username = input("Ingrese nombre de usuario: ")
@@ -159,7 +165,7 @@ def user_menu(username, password):
     digital_signature = DigitalSignature()
 
     while True:
-        print("\n--- Menú de {username} ---")
+        print(f"\n--- Menú de {username} ---")
         print("1. Guardar archivo en mi bóveda")
         print("2. Recuperar archivo de mi bóveda")
         print("3. Eliminar archivo de mi bóveda")
@@ -175,9 +181,9 @@ def user_menu(username, password):
 
         if choice == '1':
             file_path = input("Ruta del archivo: ")
-            password = getpass("Su contraseña: ")
+            vault_password = getpass("Su contraseña: ")
             if os.path.exists(file_path):
-                vault.store_file(file_path, password)
+                vault.store_file(file_path, vault_password)
             else:
                 print("El archivo no existe.")
 
@@ -186,8 +192,8 @@ def user_menu(username, password):
             if files:
                 filename = input("Nombre del archivo: ")
                 output_path = input("Ruta donde guardar: ")
-                password = getpass("Su contraseña: ")
-                vault.retrieve_file(filename, password, output_path)
+                vault_password = getpass("Su contraseña: ")
+                vault.retrieve_file(filename, vault_password, output_path)
         
         elif choice == '3':
             files = vault.list_files()
@@ -239,14 +245,18 @@ def user_menu(username, password):
                 with open(signature_path, 'r') as f:
                     signature = f.read().strip()
                 
-                # Obtener clave pública desde certificado
-                public_key = user_manager.get_public_key_from_certificate(target_user)
+                try:
+                    # Obtener clave pública desde certificado
+                    public_key = user_manager.get_public_key_from_certificate(target_user)
+                    
+                    # Verificar firma
+                    if digital_signature.verify_file_signature(file_path, signature, public_key):
+                        print("Firma digital verificada.")
+                    else:
+                        print("Firma digital no válida.")
                 
-                # Verificar firma
-                if digital_signature.verify_file_signature(file_path, signature, public_key):
-                    print("Firma digital verificada.")
-                else:
-                    print("Firma digital no válida.")
+                except Exception as e:
+                    print(f"Error al verificar firma: {e}")
             else:
                 print("Archivo o firma no encontrados.")
 

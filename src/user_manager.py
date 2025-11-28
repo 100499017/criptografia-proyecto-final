@@ -37,11 +37,20 @@ class UserManager:
     def load_user_certificate(self, username):
         """Carga el certificado de un usuario"""
         cert_path = os.path.join(self.certificates_dir, f'{username}_certificate.pem')
-        with open(cert_path, 'rb') as f:
-            cert_pem = f.read()
-        return x509.load_pem_x509_certificate(cert_pem)
+        if not os.path.exists(cert_path):
+            raise FileNotFoundError(f"Certificado no encontrado para el usuario: {username}")
+
+        try:
+            with open(cert_path, 'rb') as f:
+                cert_pem = f.read()
+            return x509.load_pem_x509_certificate(cert_pem)
+        except Exception as e:
+            raise Exception(f"Error cargando certificado de {username}: {e}")
     
     def get_public_key_from_certificate(self, username):
         """Obtiene la clave pública desde el certificado del usuario"""
-        cert = self.load_user_certificate(username)
-        return cert.public_key()
+        try:
+            cert = self.load_user_certificate(username)
+            return cert.public_key()
+        except Exception as e:
+            raise Exception(f"Error obteniendo clave pública desde certificado de {username}: {e}")
