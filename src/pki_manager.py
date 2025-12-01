@@ -133,7 +133,8 @@ class PKIManager:
 
         # Validar que la firma del CSR es válida
         if not csr.is_signature_valid:
-            raise ValueError("Firma del CSR inválida: el usuario no posee la clave privada correspondiente.")
+            raise ValueError("Firma del CSR inválida: el usuario no" \
+            "posee la clave privada correspondiente.")
         
         # Construir el certificado final
         cert = x509.CertificateBuilder().subject_name(

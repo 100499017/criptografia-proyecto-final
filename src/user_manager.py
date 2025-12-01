@@ -51,6 +51,7 @@ class UserManager:
         """Obtiene la clave pública desde el certificado del usuario"""
         try:
             cert = self.load_user_certificate(username)
+            #TODO Cargar los certificados de RootCA y SubCA y verificar
             return cert.public_key()
         except Exception as e:
             raise Exception(f"Error obteniendo clave pública desde certificado de {username}: {e}")

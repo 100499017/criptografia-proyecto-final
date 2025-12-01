@@ -279,7 +279,7 @@ def user_menu(username, password):
                 print(f"De: {msg['sender']}")
                 print(f"Archivo: {msg['filename']}")
                 print(f"Mensaje: {msg['message']}")
-                print(f"HMAC válido: {'Sí' if msg['auth_success'] else 'No'}")
+                print(f"Firma RSA-PSS: {'Válida' if msg['auth_success'] else 'Inválida'}")
 
                 if msg['auth_success']:
                     save = input("¿Descargar archivo? (s/n)")

@@ -25,7 +25,7 @@ def register_user(username: str, password: str) -> bool:
     salt = os.urandom(16)
 
     # Crea el hash de la contraseña con el salt
-    # Usamos PBKDF2, un estándar para derivar claves de contraseña
+    # Usamos Scrypt, una función de derivación de claves segura
     kdf = Scrypt(salt=salt, length=32, n=2**14, r=8, p=1)
 
     password_hash = kdf.derive(password.encode())
