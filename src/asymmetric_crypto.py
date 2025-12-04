@@ -3,6 +3,18 @@ from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import rsa, padding
 import base64
 
+class KeyLoadError(Exception):
+    """Excepción personalizada para errores al cargar las claves."""
+    pass
+
+class DecryptionError(Exception):
+    """Excepción personalizada para errores de descifrado."""
+    pass
+
+class EncryptionError(Exception):
+    """Excepción personalizada para errores de cifrado."""
+    pass
+
 class AsymmetricCrypto:
     def __init__(self):
         self.key_size = 2048 # RSA-2048
@@ -35,36 +47,48 @@ class AsymmetricCrypto:
     
     def load_private_key(self, private_pem: bytes, password: str):
         """Carga una clave privada desde PEM"""
-        return serialization.load_pem_private_key(
-            private_pem,
-            password=password.encode() if password else None
-        )
+        try:
+            return serialization.load_pem_private_key(
+                private_pem,
+                password=password.encode() if password else None
+            )
+        except Exception as e:
+            raise KeyLoadError("Error al cargar la clave privada") from e
     
     def load_public_key(self, public_pem: bytes):
         """Carga una clave pública desde PEM"""
-        return serialization.load_pem_public_key(public_pem)
+        try:
+            return serialization.load_pem_public_key(public_pem)
+        except Exception as e:
+            raise KeyLoadError("Error al cargar la clave pública") from e
     
     def encrypt_with_public_key(self, data: bytes, public_key):
         """Cifra datos con una clave pública RSA"""
-        ciphertext = public_key.encrypt(
-            data,
-            padding.OAEP(
-                mgf=padding.MGF1(algorithm=hashes.SHA256()),
-                algorithm=hashes.SHA256(),
-                label=None
+        try:
+            ciphertext = public_key.encrypt(
+                data,
+                padding.OAEP(
+                    mgf=padding.MGF1(algorithm=hashes.SHA256()),
+                    algorithm=hashes.SHA256(),
+                    label=None
+                )
             )
-        )
-        return base64.b64encode(ciphertext).decode()
+            return base64.b64encode(ciphertext).decode()
+        except Exception as e:
+            raise EncryptionError("Error al cifrar los datos") from e
     
     def decrypt_with_private_key(self, encrypted_data, private_key):
         """Descifra datos con una clave privada RSA"""
-        ciphertext = base64.b64decode(encrypted_data)
-        plaintext = private_key.decrypt(
-            ciphertext,
-            padding.OAEP(
-                mgf=padding.MGF1(algorithm=hashes.SHA256()),
-                algorithm=hashes.SHA256(),
-                label=None
+        try:
+            ciphertext = base64.b64decode(encrypted_data)
+            plaintext = private_key.decrypt(
+                ciphertext,
+                padding.OAEP(
+                    mgf=padding.MGF1(algorithm=hashes.SHA256()),
+                    algorithm=hashes.SHA256(),
+                    label=None
+                )
             )
-        )
-        return plaintext
+            return plaintext
+        except Exception as e:
+            raise DecryptionError("Error al descifrar los datos") from e

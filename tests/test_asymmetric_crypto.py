@@ -8,6 +8,7 @@ import base64
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from src.asymmetric_crypto import AsymmetricCrypto
+from src.asymmetric_crypto import KeyLoadError, DecryptionError, EncryptionError
 
 class TestAsymmetricCrypto(unittest.TestCase):
     
@@ -53,17 +54,29 @@ class TestAsymmetricCrypto(unittest.TestCase):
         self.assertEqual(test_data, decrypted)
     
     def test_load_private_key_wrong_password(self):
-        """Con una contraseña incorrecta se rechaza la carga de la clave privada."""
+        """Con una contraseña incorrecta se rechaza la carga de la clave privada (excepción manejada KeyLoadError)"""
         private_pem, public_pem = self.crypto.generate_keypair("password123")
     
         wrong_password = "incorrecta"
     
-        # Debe lanzar una excepción al usar la contraseña incorrecta
-        with self.assertRaises((ValueError)):
+        # Debe lanzar una excepción por error al cargar la clave (contraseña incorrecta)
+        with self.assertRaises((KeyLoadError)):
             self.crypto.load_private_key(private_pem, wrong_password)
     
+    def test_load_public_key_corrupt(self):
+        """Verifica que la carga de clave pública falla si el PEM está corrupto (excepción manejada KeyLoadError)"""
+        # Generar claves
+        private_pem, public_pem = self.crypto.generate_keypair("any_password")
+        
+        # Simular corrupción (quitar algunos bytes)
+        corrupt_public_pem = public_pem[:-10]
+        
+        # Debe lanzar una excepción por error al cargar la clave (clave corrupta)
+        with self.assertRaises(KeyLoadError):
+            self.crypto.load_public_key(corrupt_public_pem)
+    
     def test_decrypt_tampered_ciphertext(self):
-        """Verifica que el descifrado falla si el texto cifrado (ciphertext) ha sido manipulado."""
+        """Verifica que el descifrado falla si el texto cifrado (ciphertext) ha sido manipulado (excepción manejada DecryptionError)"""
         test_data = b"Datos que seran manipulados"
 
         # Generar claves
@@ -83,9 +96,23 @@ class TestAsymmetricCrypto(unittest.TestCase):
         
         tampered_encrypted = base64.b64encode(mutable_ciphertext).decode()
 
-        # Intentar descifrar (debe saltar una excepción)
-        with self.assertRaises((ValueError)):
+        # # Debe lanzar una excepción por error al descifrar (ciphertext manipulado)
+        with self.assertRaises((DecryptionError)):
             self.crypto.decrypt_with_private_key(tampered_encrypted, private_key)
+    
+    def test_encrypt_data_too_large(self):
+        """Verifica que el cifrado falla con datos grandes."""
+        
+        # Datos que superan el límite de 214 bytes para RSA-2048/OAEP
+        large_data = b'A' * 300
+        
+        # Generar claves (usamos la clave pública)
+        _, public_pem = self.crypto.generate_keypair("any_password")
+        public_key = self.crypto.load_public_key(public_pem)
+        
+        # # Debe lanzar una excepción por error al cifrar (datos demasiado grandes)
+        with self.assertRaises(EncryptionError):
+            self.crypto.encrypt_with_public_key(large_data, public_key)
 
 if __name__ == "__main__":
     unittest.main()
