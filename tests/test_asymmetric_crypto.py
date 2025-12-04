@@ -107,7 +107,7 @@ class TestAsymmetricCrypto(unittest.TestCase):
         large_data = b'A' * 300
         
         # Generar claves
-        _, public_pem = self.crypto.generate_keypair("any_password")
+        private_pem, public_pem = self.crypto.generate_keypair("any_password")
         public_key = self.crypto.load_public_key(public_pem)
         
         # Debe lanzar una excepción por error al cifrar (datos demasiado grandes)

@@ -9,6 +9,7 @@ import sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from src.pki_manager import PKIManager
+from src.pki_manager import KeyLoadError
 
 class TestPKI(unittest.TestCase):
     
@@ -39,6 +40,17 @@ class TestPKI(unittest.TestCase):
         
         self.assertTrue(os.path.exists(os.path.join(self.test_dir, "SubCA")))
         self.assertEqual(subca_cert.issuer, root_cert.subject)
+    
+    def test_load_private_key_wrong_password(self):
+        """Verifica que la carga de clave privada de CA falla si se usa la contraseña incorrecta"""
+        wrong_password = "contraseña_mala"
+        
+        # Crear CA raíz
+        self.pki.create_ca("TestCA", "testpassword")
+        
+        # Cargar la clave con la contraseña incorrecta y verificar que lanza KeyLoadError
+        with self.assertRaises(KeyLoadError):
+            self.pki.load_private_key("TestCA", wrong_password)
 
 if __name__ == '__main__':
     unittest.main()

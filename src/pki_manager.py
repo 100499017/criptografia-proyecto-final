@@ -6,6 +6,10 @@ from cryptography.x509.oid import NameOID
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 
+class KeyLoadError(Exception):
+    """Excepción personalizada para errores al cargar claves privadas"""
+    pass
+
 class PKIManager:
     def __init__(self, base_dir='data/pki'):
         self.base_dir = base_dir
@@ -167,10 +171,13 @@ class PKIManager:
     
     def load_private_key(self, ca_name, password=None):
         """Carga la clave privada de una CA"""
-        key_path = os.path.join(self.base_dir, ca_name, 'private_key.pem')
-        if not os.path.exists(key_path):
-            raise FileNotFoundError(f"No se encontró la clave privada para {ca_name}")
+        try:
+            key_path = os.path.join(self.base_dir, ca_name, 'private_key.pem')
+            if not os.path.exists(key_path):
+                raise FileNotFoundError(f"No se encontró la clave privada para {ca_name}")
 
-        with open(key_path, 'rb') as f:
-            private_pem = f.read()
-        return serialization.load_pem_private_key(private_pem, password=password.encode() if password else None)
+            with open(key_path, 'rb') as f:
+                private_pem = f.read()
+            return serialization.load_pem_private_key(private_pem, password=password.encode() if password else None)
+        except Exception as e:
+            raise KeyLoadError(f"Error al cargar la clave privada para {ca_name}: {str(e)}")
