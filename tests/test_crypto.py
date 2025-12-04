@@ -67,5 +67,25 @@ class TestCrypto(unittest.TestCase):
         
         self.assertIsNone(result, "El sistema debería retornar None al detectar manipulación del criptograma (Fallo de integridad)")
 
+    def test_decrypt_with_corrupt_nonce(self):
+        """Verifica que el descifrado falla al usar un Nonce corrupto o de longitud incorrecta (fuerza un error de formato)"""
+        original_data = b"Data para prueba de corrupcion del nonce"
+        key = self.crypto.generate_symmetric_key()
+
+        # 1. Cifrar datos legítimos
+        encrypted_dict = self.crypto.encrypt_aes_gcm(original_data, key)
+
+        # 2. Corromper el Nonce (quitamos 2 bytes)
+        original_nonce_bytes = base64.b64decode(encrypted_dict['nonce'])
+        corrupt_nonce = original_nonce_bytes[:-2]
+        
+        # 3. Actualizar el diccionario con el nonce corrupto
+        encrypted_dict['nonce'] = base64.b64encode(corrupt_nonce).decode()
+
+        # 4. Intentar descifrar
+        result = self.crypto.decrypt_aes_gcm(encrypted_dict, key)
+        
+        self.assertIsNone(result, "El sistema debería retornar None al detectar manipulación del nonce")
+
 if __name__ == "__main__":
     unittest.main()

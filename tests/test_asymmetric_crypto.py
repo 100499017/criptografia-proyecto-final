@@ -101,16 +101,16 @@ class TestAsymmetricCrypto(unittest.TestCase):
             self.crypto.decrypt_with_private_key(tampered_encrypted, private_key)
     
     def test_encrypt_data_too_large(self):
-        """Verifica que el cifrado falla con datos grandes."""
+        """Verifica que el cifrado falla con datos grandes que exceden el límite de RSA (excepción manejada EncryptionError)"""
         
-        # Datos que superan el límite de 214 bytes para RSA-2048/OAEP
+        # Datos que superan el límite de 214 bytes
         large_data = b'A' * 300
         
-        # Generar claves (usamos la clave pública)
+        # Generar claves
         _, public_pem = self.crypto.generate_keypair("any_password")
         public_key = self.crypto.load_public_key(public_pem)
         
-        # # Debe lanzar una excepción por error al cifrar (datos demasiado grandes)
+        # Debe lanzar una excepción por error al cifrar (datos demasiado grandes)
         with self.assertRaises(EncryptionError):
             self.crypto.encrypt_with_public_key(large_data, public_key)
 
