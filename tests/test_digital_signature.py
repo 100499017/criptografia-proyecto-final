@@ -8,6 +8,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from src.digital_signature import DigitalSignature
 from src.asymmetric_crypto import AsymmetricCrypto
+import base64
 
 class TestDigitalSignature(unittest.TestCase):
     
@@ -39,6 +40,26 @@ class TestDigitalSignature(unittest.TestCase):
         signature = self.digital_signature.sign_data(original_data, self.private_key)
         result = self.digital_signature.verify_signature(tampered_data, signature, self.public_key)
         self.assertFalse(result)
+    
+    def test_verify_tampered_signature(self):
+        """Verifica que la verificación falla si la firma es manipulada (en vez de los datos)"""
+        original_data = b"Datos a firmar y testear manipulacion de la firma"
+        
+        # Firmar
+        signature = self.digital_signature.sign_data(original_data, self.private_key)
+        
+        # Manipulamos la firma (1 byte)
+        original_signature_bytes = base64.b64decode(signature)
+        mutable_signature = bytearray(original_signature_bytes)
+        mutable_signature[0] = mutable_signature[0] ^ 0xFF 
+
+        # Codificamos la firma manipulada de nuevo
+        tampered_signature = base64.b64encode(mutable_signature).decode()
+        
+        # Verificar, se debería lanzar la excepción InvalidSignature, lo que debería de devolver False.
+        result = self.digital_signature.verify_signature(original_data, tampered_signature, self.public_key)
+        
+        self.assertFalse(result) 
 
 if __name__ == '__main__':
     unittest.main()
