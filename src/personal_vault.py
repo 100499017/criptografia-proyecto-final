@@ -53,6 +53,10 @@ class PersonalVault:
             
             print(f"Archivo {filename} guardado en la bóveda.")
             print("\tCifrado: AES-256-GCM (cifrado autenticado)")
+
+            # Eliminamos el archivo original para que solo quede el cifrado
+            os.remove(file_path)
+
             return True
         
         except Exception as e:
@@ -84,6 +88,10 @@ class PersonalVault:
                 f.write(decrypted_data)
             
             print(f"Archivo '{filename}' recuperado con éxito.")
+
+            # Eliminar archivo cifrado
+            os.remove(f'{self.vault_dir}/{filename}.enc')
+
             return True
         
         except Exception as e:
