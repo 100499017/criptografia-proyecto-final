@@ -18,20 +18,23 @@ def setup_pki():
     # Crear CA raíz si no existe
     if not os.path.exists('data/pki/RootCA'):
         print("Configurando PKI...")
-        pki.create_ca("RootCA", "root_password")
+        root_password = input("Establezca una contraseña para la CA Raíz: ")
+        pki.create_ca("RootCA", root_password)
         print("Autoridad Certificadora Raíz creada.")
 
         # Crear subCA
-        root_private_key = pki.load_private_key("RootCA", "root_password")
+        subca_password = input("Establezca una contraseña para la SubCA: ")
+        root_private_key = pki.load_private_key("RootCA", root_password)
         root_cert = pki.load_ca_certificate("RootCA")
-        pki.create_subca("SubCA", "RootCA", root_private_key, root_cert, "subca_password")
+        pki.create_subca("SubCA", "RootCA", root_private_key, root_cert, subca_password)
         print("Autoridad Certificadora Subordinada creada.")
+        return subca_password
 
 def main_menu():
     """Muestra el menú principal y gestiona la entrada del usuario."""
 
     # Configura PKI al inicio
-    setup_pki()
+    subca_password = setup_pki()
 
     while True:
         print("\n--- Menú Principal ---")
@@ -74,7 +77,7 @@ def main_menu():
 
                     # Enviar CSR a la CA para que emita el certificado
                     print("[4/4] Enviando CSR a la SubCA para emisión de certificado...")
-                    cert = pki.issue_certificate(csr, "SubCA", "subca_password")
+                    cert = pki.issue_certificate(csr, "SubCA", subca_password)
 
                     # Guardar el certificado público resultante
                     user_manager = UserManager()
